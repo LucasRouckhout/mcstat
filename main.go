@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"log"
@@ -17,24 +18,32 @@ type Status struct {
     Online bool               // online or offline?
     Version string            // server version
     Motd string               // message of the day
-    Current_players string    // current number of players online
-    Max_players string        // maximum player capacity
+    CurrentPlayers string    // current number of players online
+    MaxPlayers string        // maximum player capacity
     Latency time.Duration     // ping time to server in milliseconds
 }
 
 func main() {
     flag.Parse()
+
 	// Retrieve the status of the Minecraft server
+    status, err := GetStatus(*address, *port)
+    if err != nil {
+        log.Fatal(err.Error())
+    }
+
+    fmt.Printf("%+v\n", status)
 }
 
 // Retrieves the status of the minecraft server at given Address and Port.
 func GetStatus(address string, port int) (Status, error) {
     s := time.Now()
+    portString := fmt.Sprint(port)
 
     // Opens a TCP connection to the given address and port.
     // Also accepts a timeout so that we fail fast if the opening the connection takes to long 
-    log.Printf("Attempting to open TCP connection to %s:%d\n", address, port)
-    conn, err := net.DialTimeout("tcp", address + ":" + fmt.Sprint(port), time.Duration(5) * time.Second)
+    log.Printf("Attempting to open TCP connection to %s:%s\n", address, portString)
+    conn, err := net.DialTimeout("tcp", address + ":" + portString, time.Duration(5) * time.Second)
 
     if err != nil {
         log.Printf("ERROR: %s\n", err.Error())
@@ -58,7 +67,7 @@ func GetStatus(address string, port int) (Status, error) {
     // Read the raw response from our Server List Ping
     r := make([]byte, 512)
     _, err = conn.Read(r)
-    log.Panicf("Retrieved response from %s:%d [%X]\n", address, port, r)
+    log.Printf("Retrieved response from %s:%d\n%X\n", address, port, r)
 
     if err != nil {
         log.Printf("ERROR: %s\n", err.Error())
@@ -67,7 +76,14 @@ func GetStatus(address string, port int) (Status, error) {
     conn.Close()
 
     // Split the response data by the byte pattern 00 00 00
-    //data := strings.Split(string(r[:]), "\x00\x00\x00")
-    return Status{}, nil
+    v := bytes.Split(r, []byte("\x00\x00\x00"))
+
+    return Status{
+        Online: true,
+        Version: string(v[2][:]),
+        Motd: string(v[3][:]),
+        CurrentPlayers: string(v[4][:]),
+        MaxPlayers: string(v[5][:]),
+    }, nil
 
 }
