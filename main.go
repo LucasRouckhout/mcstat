@@ -2,40 +2,62 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
 	"net"
+	"net/http"
 	"time"
 )
 
 var (
-    address = flag.String("a", "127.0.0.1", "The address of the Minecraft server")
-    port    = flag.Int("p", 25565, "The port the Minecraft server is running on")
+    address     = flag.String("a", "127.0.0.1", "The address of the Minecraft server")
+    port        = flag.Int("p", 25565, "The port the Minecraft server is running on")
+    serverPort  = flag.Int("serverPort", 8080, "The port the mcstat server will run at.")
 )
 
 type Status struct {
-    Online bool               // online or offline?
-    Version string            // server version
-    Motd string               // message of the day
-    CurrentPlayers string    // current number of players online
-    MaxPlayers string        // maximum player capacity
-    Latency time.Duration     // ping time to server in milliseconds
+    Online bool             // online or offline?
+    Version string          // server version
+    Motd string             // message of the day
+    CurrentPlayers string   // current number of players online
+    MaxPlayers string       // maximum player capacity
+    Latency time.Duration   // ping time to server in milliseconds
 }
 
 func main() {
+    // Parse the command line flags
     flag.Parse()
 
-	// Retrieve the status of the Minecraft server
-    status, err := GetStatus(*address, *port)
-    if err != nil {
-        log.Fatal(err.Error())
-    }
+    http.HandleFunc("/status", func(rw http.ResponseWriter, r *http.Request) {
+        // Retrieve the status of the Minecraft server
+        status, err := GetStatus(*address, *port)
+        if err != nil {
+            log.Fatal(err.Error())
+        }
+        log.Printf("Retrieved status from server: %+v\n", status)
 
-    fmt.Printf("%+v\n", status)
+        rw.Header().Set("Content-Type", "application/json")
+        json.NewEncoder(rw).Encode(status)
+    })
+
+    sp := fmt.Sprint(*serverPort)
+    log.Printf("Running mcstat on port %s\n", sp)
+    log.Fatal(http.ListenAndServe(":" + sp, nil))
 }
 
 // Retrieves the status of the minecraft server at given Address and Port.
+// The initial inspiration for this code was gathered from 
+// https://github.com/ldilley/minestat/blob/master/Go/minestat/minestat.go
+// I rewrote and documented most parts to make it more idiomatic.
+//
+// This method uses the old 1.6 minecraft protocol to get a simple status response
+// from the server by sending over a set of specific bytes over a TCP socket.
+// Modern servers still respond to this protocol correctly so this will also
+// work with servers who run anything newer than 1.6. 
+// 
+// Anything older then 1.6 is not supported.
 func GetStatus(address string, port int) (Status, error) {
     s := time.Now()
     portString := fmt.Sprint(port)
