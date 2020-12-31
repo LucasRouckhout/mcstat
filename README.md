@@ -18,7 +18,7 @@ Once running you can query the endpoint with a HTTP GET call to `/status` to rec
 {
     "Online": true, 
     "Version": "1.16.4",
-    "Motd": "Message of the Day"
+    "Motd": "Message of the Day",
     "CurrentPlayers": 0,
     "MaxPlayers": 20, 
     "Latency": "0" 
