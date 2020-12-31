@@ -49,7 +49,7 @@ func main() {
         // Retrieve the status of the Minecraft server
         status, err := GetStatus(*address, *port)
         if err != nil {
-            log.Fatal(err.Error())
+            log.Println(err.Error())
         }
         log.Printf("Retrieved status from server: %+v\n", status)
 
