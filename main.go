@@ -29,36 +29,58 @@ import (
 var (
     address     = flag.String("a", "127.0.0.1", "The address of the Minecraft server")
     port        = flag.Int("p", 25565, "The port the Minecraft server is running on")
-    serverPort  = flag.Int("serverPort", 8080, "The port the mcstat server will run at.")
+    serverPort  = flag.Int("s", 8080, "The port the mcstat server will run at.")
+    logLevel    = flag.String("l", "INFO", "The log level that mcstat should use. Can be (DEBUG, INFO or ERROR)")
 )
 
+// TODO: Actually use it and write own logging package for fun
+var LOGLEVEL string = "INFO"    // The global variable that can be set by the user via logLevel
+
 type Status struct {
-    Online bool             // online or offline?
-    Version string          // server version
-    Motd string             // message of the day
-    CurrentPlayers string   // current number of players online
-    MaxPlayers string       // maximum player capacity
+    Online bool                 // online or offline?
+    Version string              // server version
+    Motd string                 // message of the day
+    CurrentPlayers string       // current number of players online
+    MaxPlayers string           // maximum player capacity
 }
+
+type LogLevel int
 
 func main() {
     // Parse the command line flags
     flag.Parse()
 
+    // Very stupid and simple way of setting the LOGLEVEL
+    // If the user gives something else then DEBUG, INFO or ERROR
+    // it will use the default which is INFO. 
+    for _, level := range [...]string{"DEBUG","INFO", "ERROR"} {
+        if level == *logLevel {
+            LOGLEVEL = level
+            break
+        }
+    }
+    log.Printf("The LOGLEVEL is set to %s\n", LOGLEVEL)
+
+    // The handler for our single endpoint
     http.HandleFunc("/status", func(rw http.ResponseWriter, r *http.Request) {
         // Retrieve the status of the Minecraft server
+        log.Printf("Getting status from %s:%d\n", *address, *port)
         status, err := GetStatus(*address, *port)
+
         if err != nil {
             log.Println(err.Error())
-        }
-        log.Printf("Retrieved status from server: %+v\n", status)
+            rw.WriteHeader(500)
 
-        rw.Header().Set("Content-Type", "application/json")
-        json.NewEncoder(rw).Encode(status)
+        } else {
+            log.Printf("Retrieved status from server: %+v\n", status)
+            rw.Header().Set("Content-Type", "application/json")
+            json.NewEncoder(rw).Encode(status)
+        }
     })
 
-    sp := fmt.Sprint(*serverPort)
-    log.Printf("Running mcstat on port %s\n", sp)
-    log.Fatal(http.ListenAndServe(":" + sp, nil))
+    serverPort := fmt.Sprint(*serverPort)
+    log.Printf("Running mcstat on port %s\n", serverPort)
+    log.Fatal(http.ListenAndServe(":" + serverPort, nil))
 }
 
 // Retrieves the status of the minecraft server at given Address and Port.
@@ -79,6 +101,7 @@ func GetStatus(address string, port int) (Status, error) {
     // Also accepts a timeout so that we fail fast if the opening the connection takes to long 
     log.Printf("Attempting to open TCP connection to %s:%s\n", address, portString)
     conn, err := net.DialTimeout("tcp", address + ":" + portString, time.Duration(5) * time.Second)
+    defer conn.Close()
 
     if err != nil {
         return Status{}, err
@@ -102,7 +125,6 @@ func GetStatus(address string, port int) (Status, error) {
     if err != nil {
         return Status{}, err
     }
-    conn.Close()
 
     // Create a Status struct from this response
     status, err := NewStatus(r)
@@ -112,7 +134,6 @@ func GetStatus(address string, port int) (Status, error) {
     }
 
     return status, nil
-
 }
 
 // Creates a Status struct from the structured
