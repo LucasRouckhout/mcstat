@@ -38,7 +38,6 @@ type Status struct {
     Motd string             // message of the day
     CurrentPlayers string   // current number of players online
     MaxPlayers string       // maximum player capacity
-    Latency time.Duration   // ping time to server in milliseconds
 }
 
 func main() {
@@ -74,7 +73,6 @@ func main() {
 // 
 // Anything older then 1.6 is not supported.
 func GetStatus(address string, port int) (Status, error) {
-    s := time.Now()
     portString := fmt.Sprint(port)
 
     // Opens a TCP connection to the given address and port.
@@ -83,13 +81,8 @@ func GetStatus(address string, port int) (Status, error) {
     conn, err := net.DialTimeout("tcp", address + ":" + portString, time.Duration(5) * time.Second)
 
     if err != nil {
-        log.Printf("ERROR: %s\n", err.Error())
         return Status{}, err
     }
-
-    // Calculate the latency with millisecond accuracy
-    latency := time.Since(s)
-    latency = latency.Round(time.Millisecond)
 
     // Write the following bytes to the TCP connection:
     // FE 01 (hex)
@@ -107,20 +100,44 @@ func GetStatus(address string, port int) (Status, error) {
     log.Printf("Retrieved response from %s:%d\n%X\n", address, port, r)
 
     if err != nil {
-        log.Printf("ERROR: %s\n", err.Error())
         return Status{}, err
     }
     conn.Close()
 
-    // Split the response data by the byte pattern 00 00 00
-    v := bytes.Split(r, []byte("\x00\x00\x00"))
+    // Create a Status struct from this response
+    status, err := NewStatus(r)
 
-    return Status{
-        Online: true,
-        Version: string(v[2][:]),
-        Motd: string(v[3][:]),
-        CurrentPlayers: string(v[4][:]),
-        MaxPlayers: string(v[5][:]),
-    }, nil
+    if err != nil {
+        return Status{}, err
+    }
+
+    return status, nil
 
 }
+
+// Creates a Status struct from the structured
+// response retrieved from a Server List Ping of 
+// a minecraft server.
+//
+// The structure of such a response in a byte sequece
+// (Big Endian) which is structured like so: 
+// https://wiki.vg/Server_List_Ping#1.6
+func NewStatus(b []byte) (Status, error) {
+    // Fields are 
+    r := bytes.Split(b, []byte("\x00\x00\x00"))
+
+    return Status {
+        Online: true,
+        Version: string(cutByteSlice(r[2])),
+        Motd: string(cutByteSlice(r[3])),
+        CurrentPlayers: string(cutByteSlice(r[4])),
+        MaxPlayers: string(cutByteSlice(r[5])),
+    }, nil
+}
+
+// Helper method which cuts out all occurences of \x00\x00
+// out of a byte slice
+func cutByteSlice(b []byte) []byte {
+    return bytes.ReplaceAll(b, []byte("\x00"), []byte(""))
+}
+
