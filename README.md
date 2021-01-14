@@ -29,6 +29,16 @@ Once running you can query the endpoint with a HTTP GET call to `/status` to rec
 
 Coming soon...
 
+# Compiling
+
+Just clone the repo, go to the root of the project and run.
+
+```bash
+go build
+```
+
+You should now find a binary in the root of the directory called `mcstat`.
+
 # License
 
 GNU GPLv3
