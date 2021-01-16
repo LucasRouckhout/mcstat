@@ -33,9 +33,6 @@ var (
     logLevel    = flag.String("l", "INFO", "The log level that mcstat should use. Can be (DEBUG, INFO or ERROR)")
 )
 
-// TODO: Actually use it and write own logging package for fun
-var LOGLEVEL string = "INFO"    // The global variable that can be set by the user via logLevel
-
 type Status struct {
     Online bool                 // online or offline?
     Version string              // server version
@@ -44,26 +41,10 @@ type Status struct {
     MaxPlayers string           // maximum player capacity
 }
 
-type LogLevel int
-
 func main() {
-    // Parse the command line flags
     flag.Parse()
 
-    // Very stupid and simple way of setting the LOGLEVEL
-    // If the user gives something else then DEBUG, INFO or ERROR
-    // it will use the default which is INFO. 
-    for _, level := range [...]string{"DEBUG","INFO", "ERROR"} {
-        if level == *logLevel {
-            LOGLEVEL = level
-            break
-        }
-    }
-    log.Printf("The LOGLEVEL is set to %s\n", LOGLEVEL)
-
-    // The handler for our single endpoint
     http.HandleFunc("/status", func(rw http.ResponseWriter, r *http.Request) {
-        // Retrieve the status of the Minecraft server
         log.Printf("Getting status from %s:%d\n", *address, *port)
         status, err := GetStatus(*address, *port)
 
@@ -111,8 +92,6 @@ func GetStatus(address string, port int) (Status, error) {
     // FE 01 (hex)
     // This is the legacy protocol way of doing a Server List ping
     // More info https://wiki.vg/Server_List_Ping#1.6
-    // Modern servers should reply to this call correctly because of
-    // the starting FE bytes.
     log.Printf("Sending Server List Ping to %s:%d\n", address, port)
     _, err = conn.Write([]byte("\xFE\x01"))
 
@@ -120,6 +99,7 @@ func GetStatus(address string, port int) (Status, error) {
     // Read the raw response from our Server List Ping
     r := make([]byte, 512)
     _, err = conn.Read(r)
+
     log.Printf("Retrieved response from %s:%d\n%X\n", address, port, r)
 
     if err != nil {
@@ -144,7 +124,6 @@ func GetStatus(address string, port int) (Status, error) {
 // (Big Endian) which is structured like so: 
 // https://wiki.vg/Server_List_Ping#1.6
 func NewStatus(b []byte) (Status, error) {
-    // Fields are 
     r := bytes.Split(b, []byte("\x00\x00\x00"))
 
     return Status {
