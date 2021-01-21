@@ -24,6 +24,8 @@ import (
 	"net"
 	"net/http"
 	"time"
+
+	"github.com/LucasRouckhout/mcstat/logger"
 )
 
 var (
@@ -32,6 +34,8 @@ var (
     serverPort  = flag.Int("s", 8080, "The port the mcstat server will run at.")
     logLevel    = flag.String("l", "INFO", "The log level that mcstat should use. Can be (DEBUG, INFO or ERROR)")
 )
+
+var LOGGER logger.Logger
 
 type Status struct {
     Online bool                 // online or offline?
@@ -44,23 +48,38 @@ type Status struct {
 func main() {
     flag.Parse()
 
+    switch(*logLevel) {
+    case "INFO":
+        LOGGER = logger.NewLogger(logger.INFO)
+
+    case "DEBUG":
+        LOGGER = logger.NewLogger(logger.DEBUG)
+
+    case "ERROR":
+        LOGGER = logger.NewLogger(logger.ERROR)
+
+    default:
+        LOGGER = logger.NewLogger(logger.INFO)
+        LOGGER.Infof("Given logLevel %s was not recognized as one of (INFO, ERROR or DEBUG) so using INFO as default\n", *logLevel)
+    }
+
     http.HandleFunc("/status", func(rw http.ResponseWriter, r *http.Request) {
-        log.Printf("Getting status from %s:%d\n", *address, *port)
+        LOGGER.Infof("Getting status from %s:%d\n", *address, *port)
         status, err := GetStatus(*address, *port)
 
         if err != nil {
-            log.Println(err.Error())
+            LOGGER.Error(err.Error())
             rw.WriteHeader(500)
 
         } else {
-            log.Printf("Retrieved status from server: %+v\n", status)
+            LOGGER.Infof("Retrieved status from server: %+v\n", status)
             rw.Header().Set("Content-Type", "application/json")
             json.NewEncoder(rw).Encode(status)
         }
     })
 
     serverPort := fmt.Sprint(*serverPort)
-    log.Printf("Running mcstat on port %s\n", serverPort)
+    LOGGER.Infof("Running mcstat on port %s\n", serverPort)
     log.Fatal(http.ListenAndServe(":" + serverPort, nil))
 }
 
@@ -80,7 +99,7 @@ func GetStatus(address string, port int) (Status, error) {
 
     // Opens a TCP connection to the given address and port.
     // Also accepts a timeout so that we fail fast if the opening the connection takes to long 
-    log.Printf("Attempting to open TCP connection to %s:%s\n", address, portString)
+    LOGGER.Debugf("Attempting to open TCP connection to %s:%s\n", address, portString)
     conn, err := net.DialTimeout("tcp", address + ":" + portString, time.Duration(5) * time.Second)
     defer conn.Close()
 
@@ -92,15 +111,18 @@ func GetStatus(address string, port int) (Status, error) {
     // FE 01 (hex)
     // This is the legacy protocol way of doing a Server List ping
     // More info https://wiki.vg/Server_List_Ping#1.6
-    log.Printf("Sending Server List Ping to %s:%d\n", address, port)
+    LOGGER.Debugf("Sending Server List Ping to %s:%d\n", address, port)
     _, err = conn.Write([]byte("\xFE\x01"))
 
+    if err != nil {
+        return Status{}, err
+    }
 
     // Read the raw response from our Server List Ping
     r := make([]byte, 512)
     _, err = conn.Read(r)
 
-    log.Printf("Retrieved response from %s:%d\n%X\n", address, port, r)
+    LOGGER.Debugf("Retrieved response from %s:%d\n%X\n", address, port, r)
 
     if err != nil {
         return Status{}, err
