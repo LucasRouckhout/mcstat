@@ -27,48 +27,48 @@ import (
 )
 
 var (
-    address     = flag.String("a", "127.0.0.1", "The address of the Minecraft server")
-    port        = flag.Int("p", 25565, "The port the Minecraft server is running on")
-    serverPort  = flag.Int("s", 8080, "The port the mcstat server will run at.")
-    logLevel    = flag.String("l", "INFO", "The log level that mcstat should use. Can be (DEBUG, INFO or ERROR)")
+	address    = flag.String("a", "127.0.0.1", "The address of the Minecraft server")
+	port       = flag.Int("p", 25565, "The port the Minecraft server is running on")
+	serverPort = flag.Int("s", 8080, "The port the mcstat server will run at.")
+	logLevel   = flag.String("l", "INFO", "The log level that mcstat should use. Can be (DEBUG, INFO or ERROR)")
 )
 
 var LOGGER logger.Logger
 
 func main() {
-    flag.Parse()
+	flag.Parse()
 
-    switch(*logLevel) {
-    case "INFO":
-        LOGGER = logger.NewLogger(logger.INFO)
+	switch *logLevel {
+	case "INFO":
+		LOGGER = logger.NewLogger(logger.INFO)
 
-    case "DEBUG":
-        LOGGER = logger.NewLogger(logger.DEBUG)
+	case "DEBUG":
+		LOGGER = logger.NewLogger(logger.DEBUG)
 
-    case "ERROR":
-        LOGGER = logger.NewLogger(logger.ERROR)
+	case "ERROR":
+		LOGGER = logger.NewLogger(logger.ERROR)
 
-    default:
-        LOGGER = logger.NewLogger(logger.INFO)
-        LOGGER.Infof("Given logLevel %s was not recognized as one of (INFO, ERROR or DEBUG) so using INFO as default\n", *logLevel)
-    }
+	default:
+		LOGGER = logger.NewLogger(logger.INFO)
+		LOGGER.Infof("Given logLevel %s was not recognized as one of (INFO, ERROR or DEBUG) so using INFO as default\n", *logLevel)
+	}
 
-    http.HandleFunc("/status", func(rw http.ResponseWriter, r *http.Request) {
-        LOGGER.Infof("Getting status from %s:%d\n", *address, *port)
-        status, err := protocol.GetStatus(*address, *port)
+	http.HandleFunc("/status", func(rw http.ResponseWriter, r *http.Request) {
+		LOGGER.Infof("Getting status from %s:%d\n", *address, *port)
+		status, err := protocol.GetStatus(*address, *port)
 
-        if err != nil {
-            LOGGER.Error(err.Error())
-            rw.WriteHeader(500)
+		if err != nil {
+			LOGGER.Error(err.Error())
+			rw.WriteHeader(500)
 
-        } else {
-            LOGGER.Infof("Retrieved status from server: %+v\n", status)
-            rw.Header().Set("Content-Type", "application/json")
-            json.NewEncoder(rw).Encode(status)
-        }
-    })
+		} else {
+			LOGGER.Infof("Retrieved status from server: %+v\n", status)
+			rw.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(rw).Encode(status)
+		}
+	})
 
-    serverPort := fmt.Sprint(*serverPort)
-    LOGGER.Infof("Running mcstat on port %s\n", serverPort)
-    log.Fatal(http.ListenAndServe(":" + serverPort, nil))
+	serverPort := fmt.Sprint(*serverPort)
+	LOGGER.Infof("Running mcstat on port %s\n", serverPort)
+	log.Fatal(http.ListenAndServe(":"+serverPort, nil))
 }

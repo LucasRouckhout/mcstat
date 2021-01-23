@@ -9,11 +9,11 @@ import (
 
 // Represents the status of a Minecraft server
 type Status struct {
-    Online bool                 // online or offline?
-    Version string              // server version
-    Motd string                 // message of the day
-    CurrentPlayers string       // current number of players online
-    MaxPlayers string           // maximum player capacity
+	Online         bool   // online or offline?
+	Version        string // server version
+	Motd           string // message of the day
+	CurrentPlayers string // current number of players online
+	MaxPlayers     string // maximum player capacity
 }
 
 // Retrieves the status of the minecraft server at given Address and Port.
@@ -28,63 +28,63 @@ type Status struct {
 //
 // Anything older then 1.6 is not supported.
 func GetStatus(address string, port int) (Status, error) {
-    conn, err := net.DialTimeout("tcp", address + ":" + fmt.Sprint(port), time.Duration(5) * time.Second)
+	conn, err := net.DialTimeout("tcp", address+":"+fmt.Sprint(port), time.Duration(5)*time.Second)
 
-    if err != nil {
-        return Status{}, err
-    }
+	if err != nil {
+		return Status{}, err
+	}
 
-    // defer after the return of the err otherwise 
-    //you will get nasty nullpointers
-    defer conn.Close() 
+	// defer after the return of the err otherwise
+	//you will get nasty nullpointers
+	defer conn.Close()
 
-    // Write the following bytes to the TCP connection:
-    // FE 01 (hex)
-    // This is the legacy protocol way of doing a Server List ping
-    // More info https://wiki.vg/Server_List_Ping#1.6
-    _, err = conn.Write([]byte("\xFE\x01"))
+	// Write the following bytes to the TCP connection:
+	// FE 01 (hex)
+	// This is the legacy protocol way of doing a Server List ping
+	// More info https://wiki.vg/Server_List_Ping#1.6
+	_, err = conn.Write([]byte("\xFE\x01"))
 
-    if err != nil {
-        return Status{}, err
-    }
+	if err != nil {
+		return Status{}, err
+	}
 
-    buf := make([]byte, 512)
-    _, err = conn.Read(buf)
+	buf := make([]byte, 512)
+	_, err = conn.Read(buf)
 
-    if err != nil {
-        return Status{}, err
-    }
+	if err != nil {
+		return Status{}, err
+	}
 
-    status, err := newStatus(buf)
+	status, err := newStatus(buf)
 
-    if err != nil {
-        return Status{}, err
-    }
+	if err != nil {
+		return Status{}, err
+	}
 
-    return status, nil
+	return status, nil
 }
 
 // Creates a Status struct from the structured
-// response retrieved from a Server List Ping of 
+// response retrieved from a Server List Ping of
 // a minecraft server.
 //
 // The structure of such a response in a byte sequece
-// (Big Endian) which is structured like so: 
+// (Big Endian) which is structured like so:
 // https://wiki.vg/Server_List_Ping#1.6
 func newStatus(b []byte) (Status, error) {
-    r := bytes.Split(b, []byte("\x00\x00\x00"))
+	r := bytes.Split(b, []byte("\x00\x00\x00"))
 
-    return Status {
-        Online: true,
-        Version: string(cutByteSlice(r[2])),
-        Motd: string(cutByteSlice(r[3])),
-        CurrentPlayers: string(cutByteSlice(r[4])),
-        MaxPlayers: string(cutByteSlice(r[5])),
-    }, nil
+	return Status{
+		Online:         true,
+		Version:        string(cutByteSlice(r[2])),
+		Motd:           string(cutByteSlice(r[3])),
+		CurrentPlayers: string(cutByteSlice(r[4])),
+		MaxPlayers:     string(cutByteSlice(r[5])),
+	}, nil
 }
 
 // Helper method which cuts out all occurences of \x00\x00
 // out of a byte slice
 func cutByteSlice(b []byte) []byte {
-    return bytes.ReplaceAll(b, []byte("\x00"), []byte(""))
+	return bytes.ReplaceAll(b, []byte("\x00"), []byte(""))
 }
