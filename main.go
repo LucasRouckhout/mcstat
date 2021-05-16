@@ -33,42 +33,42 @@ var (
 	logLevel   = flag.String("l", "INFO", "The log level that mcstat should use. Can be (DEBUG, INFO or ERROR)")
 )
 
-var LOGGER logger.Logger
-
 func main() {
 	flag.Parse()
 
+	var l logger.Logger
+
 	switch *logLevel {
 	case "INFO":
-		LOGGER = logger.NewLogger(logger.INFO)
+		l = logger.NewLogger(logger.INFO)
 
 	case "DEBUG":
-		LOGGER = logger.NewLogger(logger.DEBUG)
+		l = logger.NewLogger(logger.DEBUG)
 
 	case "ERROR":
-		LOGGER = logger.NewLogger(logger.ERROR)
+		l = logger.NewLogger(logger.ERROR)
 
 	default:
-		LOGGER = logger.NewLogger(logger.INFO)
-		LOGGER.Infof("Given logLevel %s was not recognized as one of (INFO, ERROR or DEBUG) so using INFO as default\n", *logLevel)
+		l = logger.NewLogger(logger.INFO)
+		l.Infof("Given logLevel %s was not recognized as one of (INFO, ERROR or DEBUG) so using INFO as default\n", *logLevel)
 	}
 
 	http.HandleFunc("/status", func(rw http.ResponseWriter, r *http.Request) {
-		LOGGER.Infof("Getting status from %s:%d\n", *address, *port)
+		l.Infof("Getting status from %s:%d\n", *address, *port)
 		status, err := protocol.GetStatus(*address, *port)
 
 		if err != nil {
-			LOGGER.Error(err.Error())
+			l.Error(err.Error())
 			rw.WriteHeader(500)
 
 		} else {
-			LOGGER.Infof("Retrieved status from server: %+v\n", status)
+			l.Infof("Retrieved status from server: %+v\n", status)
 			rw.Header().Set("Content-Type", "application/json")
 			json.NewEncoder(rw).Encode(status)
 		}
 	})
 
 	serverPort := fmt.Sprint(*serverPort)
-	LOGGER.Infof("Running mcstat on port %s\n", serverPort)
+	l.Infof("Running mcstat on port %s\n", serverPort)
 	log.Fatal(http.ListenAndServe(":"+serverPort, nil))
 }

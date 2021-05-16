@@ -1,3 +1,5 @@
+// Package protocol contains a collection
+// calls which can be send to a Minecraft server
 package protocol
 
 import (
@@ -7,7 +9,7 @@ import (
 	"time"
 )
 
-// Represents the status of a Minecraft server
+// Status represents the status of a Minecraft server
 type Status struct {
 	Online         bool   // online or offline?
 	Version        string // server version
@@ -16,7 +18,7 @@ type Status struct {
 	MaxPlayers     string // maximum player capacity
 }
 
-// Retrieves the status of the minecraft server at given Address and Port.
+// GetStatus retrieves the status of the minecraft server at given Address and Port.
 // The initial inspiration for this code was gathered from
 // https://github.com/ldilley/minestat/blob/master/Go/minestat/minestat.go
 // I rewrote and documented most parts to make it more idiomatic.
@@ -33,9 +35,6 @@ func GetStatus(address string, port int) (Status, error) {
 	if err != nil {
 		return Status{}, err
 	}
-
-	// defer after the return of the err otherwise
-	//you will get nasty nullpointers
 	defer conn.Close()
 
 	// Write the following bytes to the TCP connection:
@@ -64,7 +63,7 @@ func GetStatus(address string, port int) (Status, error) {
 	return status, nil
 }
 
-// Creates a Status struct from the structured
+// newStatus creates a Status struct from the structured
 // response retrieved from a Server List Ping of
 // a minecraft server.
 //
