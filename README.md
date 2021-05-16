@@ -1,6 +1,6 @@
 # mcstat
 
-__NOTE__: This project is not finished yet.
+__NOTE__: This project is not finished yet. It was my first golang project used to learn the language.
 
 A simple HTTP minecraft status server. mcstat is a simple HTTP server with a single endpoint `/status` which will provide you a quick status on your minecraft server.
 
